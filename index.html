@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A Better Me · Identity Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ornamental porcelain frame -->
+  <div class="porcelain-frame" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <div class="seal" aria-hidden="true">
+      <svg viewBox="0 0 100 100" class="seal-svg">
+        <circle cx="50" cy="50" r="46" class="seal-ring" />
+        <circle cx="50" cy="50" r="38" class="seal-ring-inner" />
+        <text x="50" y="61" text-anchor="middle" class="seal-char">己</text>
+      </svg>
+    </div>
+    <div class="masthead-text">
+      <p class="kicker">Identity Architecture</p>
+      <h1>A Better Me</h1>
+      <p class="dek">Design the person you are becoming — one deliberate practice at a time.</p>
+    </div>
+    <div class="masthead-date" id="today"></div>
+  </header>
+
+  <div class="rule-ornate" aria-hidden="true"></div>
+
+  <main>
+    <!-- CORE INTENTION -->
+    <section class="panel intention" id="intentionPanel">
+      <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+      <h2 class="panel-title"><span class="ideo">志</span> Core Intention</h2>
+      <p class="intention-lead">I am becoming someone who…</p>
+      <div class="intention-edit" id="intentionText" contenteditable="true"
+           data-placeholder="…acts with discipline, warmth, and quiet resolve."></div>
+      <p class="intention-hint">Click to edit. This is your north star.</p>
+    </section>
+
+    <!-- IDENTITY PILLARS -->
+    <section class="section-head">
+      <h2><span class="ideo">柱</span> Identity Pillars</h2>
+      <button class="btn-ghost" id="addPillar">＋ New Pillar</button>
+    </section>
+    <div class="pillars" id="pillars"></div>
+
+    <!-- DAILY PRACTICES -->
+    <section class="section-head">
+      <h2><span class="ideo">習</span> Today's Practices</h2>
+      <button class="btn-ghost" id="addPractice">＋ New Practice</button>
+    </section>
+    <section class="panel practices">
+      <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+      <ul class="practice-list" id="practices"></ul>
+      <div class="practice-summary" id="practiceSummary"></div>
+    </section>
+
+    <!-- REFLECTION -->
+    <section class="panel reflection">
+      <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+      <h2 class="panel-title"><span class="ideo">思</span> Evening Reflection</h2>
+      <p class="intention-lead">Today, I acted like the person I want to be when I…</p>
+      <textarea id="reflection" class="reflection-input"
+        placeholder="One small moment where you lived your intention."></textarea>
+      <div class="reflection-foot">
+        <span id="reflectionSaved" class="saved-flag"></span>
+        <button class="btn-solid" id="saveReflection">Seal the day</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-mark" aria-hidden="true"></div>
+    <p>A Better Me · <span id="streakLine"></span></p>
+    <button class="btn-text" id="resetAll">Reset everything</button>
+  </footer>
+
+  <!-- pillar template modal -->
+  <div class="modal-veil" id="modalVeil" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+      <h3 id="modalTitle">New Identity Pillar</h3>
+      <label class="field">
+        <span>Identity</span>
+        <input type="text" id="mIdentity" placeholder="The Athlete · The Craftsman · The Present Parent" />
+      </label>
+      <label class="field">
+        <span>Because I believe…</span>
+        <input type="text" id="mCreed" placeholder="A strong body is a strong mind." />
+      </label>
+      <div class="modal-actions">
+        <button class="btn-text" id="mCancel">Cancel</button>
+        <button class="btn-solid" id="mSave">Save Pillar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
