@@ -9,12 +9,17 @@ import os
 
 app = FastAPI()
 
-# Allow CORS if needed
+# Restrict browser access to the known frontends (single-user personal tool).
+# NOTE: CORS only constrains browsers, not direct curl/API calls.
+ALLOWED_ORIGINS = os.getenv(
+    "ABETTERME_ORIGINS",
+    "https://chuachua69.github.io,http://localhost:8010,http://127.0.0.1:8010",
+).split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=[o.strip() for o in ALLOWED_ORIGINS if o.strip()],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -63,4 +68,6 @@ async def save_state(request: Request):
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    host = os.getenv("ABETTERME_HOST", "127.0.0.1")
+    port = int(os.getenv("ABETTERME_PORT", "8787"))
+    uvicorn.run(app, host=host, port=port)

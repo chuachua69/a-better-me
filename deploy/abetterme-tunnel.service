@@ -1,0 +1,13 @@
+[Unit]
+Description=Cloudflare Tunnel for A Better Me
+After=network.target
+
+[Service]
+Type=simple
+# Named tunnel (stable hostname; requires a domain on Cloudflare + `cloudflared tunnel login`)
+ExecStart=/usr/local/bin/cloudflared tunnel run abetterme
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

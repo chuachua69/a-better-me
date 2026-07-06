@@ -1,6 +1,16 @@
 /* ===== A Better Me — Identity Architecture ===== */
 const KEY = "aBetterMe.v2";
 const DAY = 864e5;
+
+/* Backend sync is optional. Point the public frontend at the droplet backend by
+   visiting once with ?api=https://<tunnel-host> — it's remembered in localStorage.
+   With no api configured on GitHub Pages, the app runs purely on localStorage. */
+const API_BASE = (() => {
+  const q = new URLSearchParams(location.search).get("api");
+  if (q !== null) localStorage.setItem("aBetterMe.api", q.replace(/\/+$/, ""));
+  return (localStorage.getItem("aBetterMe.api") || "").replace(/\/+$/, "");
+})();
+const SYNC = !!API_BASE || !location.hostname.endsWith("github.io");
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const dayStr = (offset) => new Date(Date.now() - offset * DAY).toISOString().slice(0, 10);
 
@@ -128,16 +138,18 @@ function loadLocal() {
 }
 function save() {
   localStorage.setItem(KEY, JSON.stringify(state));
-  fetch("/api/state", {
+  if (!SYNC) return;
+  fetch(API_BASE + "/api/state", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(state)
-  }).catch(err => console.error("Sync failed:", err));
+  }).catch(() => {});
 }
 
 async function syncServer() {
+  if (!SYNC) return;
   try {
-    const res = await fetch("/api/state");
+    const res = await fetch(API_BASE + "/api/state");
     if (res.ok) {
       const data = await res.json();
       if (Object.keys(data).length > 0) {

@@ -1,0 +1,13 @@
+[Unit]
+Description=A Better Me Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/ABetterMe
+ExecStart=/root/ABetterMe/.venv/bin/python bot.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
