@@ -377,6 +377,47 @@ main,header,footer{position:relative;z-index:1;}
 
 .modal-hint{font-size:.82rem;color:var(--ink-soft);font-style:italic;font-family:var(--serif);margin:-4px 0 16px;}
 
+/* ---------- TODAY GROUPED BY IDENTITY ---------- */
+.today-groups{display:flex;flex-direction:column;gap:8px;}
+.today-group{
+  border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  background:linear-gradient(180deg,#fff,var(--cream));transition:border-color .3s;
+}
+.today-group.is-complete{border-color:var(--gold);}
+.today-group-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 16px;background:var(--blue);color:var(--cream);position:relative;
+}
+.today-group-head[role="button"]{cursor:pointer;}
+.today-group-head[role="button"]:hover{background:var(--blue-soft);}
+.today-group-head[role="button"]::after{
+  content:"→";opacity:.45;font-size:.9rem;margin-left:2px;transition:opacity .16s,transform .16s;
+}
+.today-group-head[role="button"]:hover::after{opacity:.9;transform:translateX(2px);}
+.tg-identity{font-family:var(--serif);font-weight:600;font-size:1.3rem;line-height:1.1;}
+.tg-meta{display:flex;align-items:center;gap:12px;margin-left:auto;}
+.tg-progress{
+  font-family:var(--sans);font-size:.78rem;font-weight:600;letter-spacing:.04em;
+  background:rgba(255,255,255,.14);border-radius:20px;padding:3px 10px;
+}
+.tg-progress.complete{background:var(--gold);color:#2a2410;}
+.tg-strength{font-family:var(--serif);font-size:1rem;color:#dfe7f0;opacity:.85;}
+.tg-bar{height:4px;background:var(--cream-deep);}
+.tg-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--blue-wash),var(--gold));transition:width .5s;}
+.today-group .practice-list{padding:2px 16px 6px;}
+.pill-today{color:#fff;font-weight:600;letter-spacing:.02em;}
+.pill-today.complete{color:var(--gold);}
+
+.link-btn{
+  background:none;border:none;color:var(--crimson);text-decoration:underline;
+  font:inherit;cursor:pointer;padding:0;
+}
+.pillar.flash{animation:pillarFlash 1.3s ease;}
+@keyframes pillarFlash{
+  0%,100%{box-shadow:var(--shadow);}
+  25%,60%{box-shadow:0 0 0 3px var(--gold),0 18px 40px -22px rgba(29,53,87,.45);}
+}
+
 /* ---------- DATE NAVIGATION ---------- */
 .date-nav{display:flex;align-items:center;gap:8px;}
 .date-btn{

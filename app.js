@@ -326,6 +326,8 @@ function renderPillars() {
     return;
   }
   state.pillars.forEach((p) => {
+    const items = state.practices.filter((pr) => pr.pillarId === p.id);
+    const doneToday = items.filter((pr) => isDoneOn(pr.id, todayStr())).length;
     const el = document.createElement("article");
     el.className = "pillar";
     el.innerHTML = `
@@ -334,7 +336,7 @@ function renderPillars() {
       <div class="pillar-meter-label"><span>Identity strength</span><span>${p.strength}%</span></div>
       <div class="pillar-meter"><span style="width:${p.strength}%"></span></div>
       <div class="pillar-habits">
-        <div class="pillar-habits-title">Daily practices</div>
+        <div class="pillar-habits-title">Daily practices · <span class="pill-today ${items.length && doneToday === items.length ? "complete" : ""}">${doneToday}/${items.length} today</span></div>
         ${habitRowsHTML(p.id)}
         <div class="pillar-add-row">
           <button class="gen" data-pact="gen" data-id="${p.id}">✦ Auto-generate</button>
@@ -467,35 +469,75 @@ el("prevDay").addEventListener("click", () => shiftDay(-1));
 el("nextDay").addEventListener("click", () => shiftDay(1));
 el("jumpToday").addEventListener("click", () => { viewDate = todayStr(); renderPractices(); loadReflection(); });
 
+function practiceItemHTML(pr, d) {
+  const done = isDoneOn(pr.id, d);
+  const streak = streakUpto(pr.id, d);
+  return `<li class="practice-item ${done ? "is-done" : ""}">
+    <div class="check ${done ? "done" : ""}" data-id="${pr.id}" role="checkbox" aria-checked="${done}" tabindex="0"></div>
+    <div class="practice-body"><div class="practice-name">${esc(pr.name)}</div></div>
+    <div class="practice-streak">${streak > 0 ? "🔥 " + streak : ""}</div>
+  </li>`;
+}
+
 function renderPractices() {
   practicesEl.innerHTML = "";
   if (!state.practices.length) {
-    practicesEl.innerHTML = `<li class="practice-empty">No practices yet. Add an identity pillar and its habits will appear here.</li>`;
+    practicesEl.innerHTML = `<p class="practice-empty">No practices yet. Add an identity pillar on the <button class="link-btn" data-goto="identity">Identity</button> tab and its habits appear here.</p>`;
     summaryEl.textContent = "";
     renderDateNav(); updateStreakLine();
     return;
   }
   const d = viewDate;
-  state.practices.forEach((pr) => {
-    const done = isDoneOn(pr.id, d);
-    const streak = streakUpto(pr.id, d);
-    const li = document.createElement("li");
-    li.className = "practice-item" + (done ? " is-done" : "");
-    li.innerHTML = `
-      <div class="check ${done ? "done" : ""}" data-id="${pr.id}" role="checkbox" aria-checked="${done}" tabindex="0"></div>
-      <div class="practice-body">
-        <div class="practice-name">${esc(pr.name)}</div>
-        <div class="practice-tag">${esc(pillarName(pr.pillarId))}</div>
+  // group practices under their identity pillar (in pillar order), then any orphans
+  const groups = state.pillars
+    .map((p) => ({ pillar: p, items: state.practices.filter((pr) => pr.pillarId === p.id) }))
+    .filter((g) => g.items.length);
+  const known = new Set(state.pillars.map((p) => p.id));
+  const orphans = state.practices.filter((pr) => !known.has(pr.pillarId));
+  if (orphans.length) groups.push({ pillar: null, items: orphans });
+
+  groups.forEach((g) => {
+    const done = g.items.filter((pr) => isDoneOn(pr.id, d)).length;
+    const full = done === g.items.length;
+    const strength = g.pillar ? g.pillar.strength : 0;
+    const sec = document.createElement("div");
+    sec.className = "today-group" + (full ? " is-complete" : "");
+    sec.innerHTML = `
+      <div class="today-group-head" ${g.pillar ? `data-goto-pillar="${g.pillar.id}" role="button" tabindex="0" title="Manage this identity"` : ""}>
+        <div class="tg-identity">${g.pillar ? esc(g.pillar.identity) : "Unassigned"}</div>
+        <div class="tg-meta">
+          <span class="tg-progress ${full ? "complete" : ""}">${done}/${g.items.length}</span>
+          ${g.pillar ? `<span class="tg-strength">${strength}%</span>` : ""}
+        </div>
       </div>
-      <div class="practice-streak">${streak > 0 ? "🔥 " + streak : ""}</div>`;
-    practicesEl.appendChild(li);
+      ${g.pillar ? `<div class="tg-bar"><span style="width:${strength}%"></span></div>` : ""}
+      <ul class="practice-list">${g.items.map((pr) => practiceItemHTML(pr, d)).join("")}</ul>`;
+    practicesEl.appendChild(sec);
   });
+
   const doneCount = doneCountOn(d);
   summaryEl.textContent = `${doneCount} of ${state.practices.length} practices lived ${isToday(d) ? "today" : "that day"} — each one a vote for who you're becoming.`;
   renderDateNav(); updateStreakLine();
 }
 
+function focusPillar(id) {
+  switchView("identity");
+  requestAnimationFrame(() => {
+    const idx = state.pillars.findIndex((p) => p.id === id);
+    const card = pillarsEl.querySelectorAll(".pillar")[idx];
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.classList.add("flash");
+      setTimeout(() => card.classList.remove("flash"), 1300);
+    }
+  });
+}
+
 practicesEl.addEventListener("click", (e) => {
+  const goto = e.target.closest("[data-goto]");
+  if (goto) { sfx.tap(); switchView(goto.dataset.goto); return; }
+  const head = e.target.closest("[data-goto-pillar]");
+  if (head) { sfx.tap(); focusPillar(+head.dataset.gotoPillar); return; }
   const chk = e.target.closest(".check");
   if (!chk) return;
   const id = +chk.dataset.id;
