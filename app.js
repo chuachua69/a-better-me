@@ -73,24 +73,46 @@ const seedBase = {
     { id: 5, pillarId: 3, name: "Phone away at dinner", streak: 0, doneOn: "" },
     { id: 6, pillarId: 3, name: "Three deep breaths before reacting", streak: 0, doneOn: "" },
   ],
-  reflection: { date: "", text: "" },
-  history: {},          // { 'YYYY-MM-DD': { done, total } }
+  reflection: { date: "", text: "" }, // legacy single reflection (migrated to reflections)
+  reflections: {},      // { 'YYYY-MM-DD': text }
+  dayLog: {},           // { 'YYYY-MM-DD': [practiceId, ...] }  — canonical per-day completions
+  history: {},          // { 'YYYY-MM-DD': { done, total } }    — derived, kept for charts
   strengthHistory: {},  // { 'YYYY-MM-DD': avgStrength }
   lastVisit: "",
 };
 
-/* demo history so Trends looks alive on first run; real data appends from today */
+/* demo history so Trends & past days look alive on first run; real data appends from today */
 function buildDemo(base) {
-  const total = base.practices.length;
+  const ids = base.practices.map((p) => p.id);
+  const total = ids.length;
   const rnd = (n) => Math.floor(Math.random() * n);
   let strength = 30;
   for (let i = 13; i >= 1; i--) {
     const d = dayStr(i);
-    base.history[d] = { done: Math.min(total, 1 + rnd(total)), total };
+    const done = 1 + rnd(total);
+    const picks = [...ids].sort(() => Math.random() - 0.5).slice(0, done);
+    base.dayLog[d] = picks;
+    base.history[d] = { done: picks.length, total };
     strength = Math.max(18, Math.min(72, strength + (rnd(9) - 3)));
     base.strengthHistory[d] = Math.round(strength);
   }
   return base;
+}
+
+/* fold legacy / bot-written fields into the canonical model on every load */
+function migrate(s) {
+  if (!s.dayLog) s.dayLog = {};
+  if (!s.reflections) s.reflections = {};
+  (s.practices || []).forEach((p) => {
+    if (p.doneOn) {
+      const arr = s.dayLog[p.doneOn] || (s.dayLog[p.doneOn] = []);
+      if (!arr.includes(p.id)) arr.push(p.id);
+    }
+  });
+  if (s.reflection && s.reflection.date && s.reflections[s.reflection.date] == null) {
+    s.reflections[s.reflection.date] = s.reflection.text || "";
+  }
+  return s;
 }
 
 let state = loadLocal();
@@ -99,7 +121,7 @@ function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return buildDemo(structuredClone(seedBase));
-    return { ...structuredClone(seedBase), ...JSON.parse(raw) };
+    return migrate({ ...structuredClone(seedBase), ...JSON.parse(raw) });
   } catch {
     return buildDemo(structuredClone(seedBase));
   }
@@ -119,9 +141,10 @@ async function syncServer() {
     if (res.ok) {
       const data = await res.json();
       if (Object.keys(data).length > 0) {
-        state = { ...structuredClone(seedBase), ...data };
+        state = migrate({ ...structuredClone(seedBase), ...data });
         localStorage.setItem(KEY, JSON.stringify(state));
         renderPractices();
+        loadReflection();
         renderPillars();
         if (activeView === "trends") renderTrends();
         el("intentionText").textContent = state.intention || "";
@@ -200,13 +223,33 @@ document.addEventListener("pointerdown", (e) => {
   if (!ownSound) sfx.tap();
 });
 
-/* ---------- recording ---------- */
-function recordToday() {
-  const t = todayStr();
-  const total = state.practices.length;
-  const done = state.practices.filter((p) => p.doneOn === t).length;
-  if (total > 0) state.history[t] = { done, total };
+/* ---------- day helpers ---------- */
+const prevDayStr = (d) => new Date(new Date(d).getTime() - DAY).toISOString().slice(0, 10);
+const nextDayStr = (d) => new Date(new Date(d).getTime() + DAY).toISOString().slice(0, 10);
+const isDoneOn = (id, date) => (state.dayLog[date] || []).includes(id);
+function streakUpto(id, date) {
+  let n = 0, d = date;
+  while (isDoneOn(id, d)) { n++; d = prevDayStr(d); }
+  return n;
 }
+function doneCountOn(date) {
+  const ids = new Set(state.practices.map((p) => p.id));
+  return (state.dayLog[date] || []).filter((id) => ids.has(id)).length;
+}
+/* keep practice.doneOn + streak fresh so the Telegram bot (shared state) stays correct */
+function syncPracticeMeta(p) {
+  let latest = "";
+  for (const d in state.dayLog) if (state.dayLog[d].includes(p.id) && d > latest) latest = d;
+  p.doneOn = latest;
+  p.streak = latest ? streakUpto(p.id, latest) : 0;
+}
+
+/* ---------- recording ---------- */
+function recordDay(date) {
+  const total = state.practices.length;
+  if (total > 0) state.history[date] = { done: doneCountOn(date), total };
+}
+function recordToday() { recordDay(todayStr()); }
 function recordStrength() {
   if (!state.pillars.length) return;
   const avg = Math.round(state.pillars.reduce((s, p) => s + p.strength, 0) / state.pillars.length);
@@ -384,20 +427,46 @@ el("mSave").addEventListener("click", () => {
   save(); renderPillars(); closeModal();
 });
 
-/* ============ TODAY: practices ============ */
+/* ============ TODAY: date navigation + practices ============ */
 const practicesEl = el("practices"), summaryEl = el("practiceSummary");
+const dateLabel = el("dateLabel"), dailyPrompt = el("dailyPrompt");
+let viewDate = todayStr();
+
+const niceDate = (d) => new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+const isToday = (d) => d === todayStr();
+
+function renderDateNav() {
+  dateLabel.textContent = isToday(viewDate) ? `Today · ${niceDate(viewDate)}` : niceDate(viewDate);
+  el("nextDay").disabled = viewDate >= todayStr();
+  el("jumpToday").hidden = isToday(viewDate);
+  const untouched = isToday(viewDate) && state.practices.length > 0
+    && (state.dayLog[viewDate] || []).length === 0
+    && !(state.reflections[viewDate] || "").trim();
+  dailyPrompt.hidden = !untouched;
+}
+
+function shiftDay(delta) {
+  let d = delta < 0 ? prevDayStr(viewDate) : nextDayStr(viewDate);
+  if (d > todayStr()) d = todayStr();
+  viewDate = d;
+  renderPractices(); loadReflection();
+}
+el("prevDay").addEventListener("click", () => shiftDay(-1));
+el("nextDay").addEventListener("click", () => shiftDay(1));
+el("jumpToday").addEventListener("click", () => { viewDate = todayStr(); renderPractices(); loadReflection(); });
 
 function renderPractices() {
   practicesEl.innerHTML = "";
   if (!state.practices.length) {
     practicesEl.innerHTML = `<li class="practice-empty">No practices yet. Add an identity pillar and its habits will appear here.</li>`;
     summaryEl.textContent = "";
-    updateStreakLine();
+    renderDateNav(); updateStreakLine();
     return;
   }
-  const t = todayStr();
+  const d = viewDate;
   state.practices.forEach((pr) => {
-    const done = pr.doneOn === t;
+    const done = isDoneOn(pr.id, d);
+    const streak = streakUpto(pr.id, d);
     const li = document.createElement("li");
     li.className = "practice-item" + (done ? " is-done" : "");
     li.innerHTML = `
@@ -406,25 +475,23 @@ function renderPractices() {
         <div class="practice-name">${esc(pr.name)}</div>
         <div class="practice-tag">${esc(pillarName(pr.pillarId))}</div>
       </div>
-      <div class="practice-streak">${pr.streak > 0 ? "🔥 " + pr.streak : ""}</div>`;
+      <div class="practice-streak">${streak > 0 ? "🔥 " + streak : ""}</div>`;
     practicesEl.appendChild(li);
   });
-  const doneCount = state.practices.filter((p) => p.doneOn === t).length;
-  summaryEl.textContent = `${doneCount} of ${state.practices.length} practices lived today — each one a vote for who you're becoming.`;
-  updateStreakLine();
+  const doneCount = doneCountOn(d);
+  summaryEl.textContent = `${doneCount} of ${state.practices.length} practices lived ${isToday(d) ? "today" : "that day"} — each one a vote for who you're becoming.`;
+  renderDateNav(); updateStreakLine();
 }
 
 practicesEl.addEventListener("click", (e) => {
   const chk = e.target.closest(".check");
   if (!chk) return;
   const id = +chk.dataset.id;
-  const pr = state.practices.find((p) => p.id === id);
-  const willComplete = pr && pr.doneOn !== todayStr();
+  const willComplete = !isDoneOn(id, viewDate);
   const rect = chk.getBoundingClientRect();
   const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
   toggle(id);
-  if (willComplete) { sfx.check(); bloomRing(cx, cy); }
-  else { sfx.uncheck(); }
+  if (willComplete) { sfx.check(); bloomRing(cx, cy); } else { sfx.uncheck(); }
 });
 practicesEl.addEventListener("keydown", (e) => {
   const chk = e.target.closest(".check");
@@ -432,36 +499,44 @@ practicesEl.addEventListener("keydown", (e) => {
 });
 
 function toggle(id) {
+  const d = viewDate;
+  const arr = state.dayLog[d] || (state.dayLog[d] = []);
+  const i = arr.indexOf(id);
+  const nowDone = i < 0;
+  if (nowDone) arr.push(id); else arr.splice(i, 1);
+  if (arr.length === 0) delete state.dayLog[d];
   const pr = state.practices.find((p) => p.id === id);
-  const t = todayStr(), y = dayStr(1);
-  if (pr.doneOn === t) {
-    pr.doneOn = "";
-    pr.streak = Math.max(0, pr.streak - 1);
-  } else {
-    pr.streak = pr.doneOn === y ? pr.streak + 1 : 1;
-    pr.doneOn = t;
-    // completing a practice nudges its pillar's identity strength
-    const pill = state.pillars.find((p) => p.id === pr.pillarId);
-    if (pill) pill.strength = Math.min(100, pill.strength + 2);
+  if (pr) {
+    syncPracticeMeta(pr); // keep doneOn/streak in sync for the Telegram bot
+    if (nowDone) {
+      const pill = state.pillars.find((p) => p.id === pr.pillarId);
+      if (pill) pill.strength = Math.min(100, pill.strength + 2);
+    }
   }
-  recordToday(); recordStrength(); save(); renderPractices();
+  recordDay(d); recordStrength(); save(); renderPractices();
 }
 
-/* ---------- reflection ---------- */
+/* ---------- reflection (per day) ---------- */
 const reflectionEl = el("reflection"), savedFlag = el("reflectionSaved");
-if (state.reflection.date === todayStr()) reflectionEl.value = state.reflection.text;
+function loadReflection() {
+  reflectionEl.value = state.reflections[viewDate] || "";
+  el("reflectDate").textContent = isToday(viewDate) ? "" : ` · ${niceDate(viewDate)}`;
+}
 el("saveReflection").addEventListener("click", () => {
-  state.reflection = { date: todayStr(), text: reflectionEl.value.trim() };
+  const txt = reflectionEl.value.trim();
+  if (txt) state.reflections[viewDate] = txt; else delete state.reflections[viewDate];
+  state.reflection = { date: viewDate, text: txt }; // legacy mirror
   save();
   sfx.seal();
   savedFlag.textContent = "Sealed ✦";
   savedFlag.classList.add("show");
+  renderDateNav();
   setTimeout(() => savedFlag.classList.remove("show"), 2200);
 });
 
 /* ---------- streak line ---------- */
 function updateStreakLine() {
-  const best = state.practices.reduce((m, p) => Math.max(m, p.streak), 0);
+  const best = state.practices.reduce((m, p) => Math.max(m, streakUpto(p.id, todayStr())), 0);
   el("streakLine").textContent = best > 0
     ? `Longest active streak: ${best} day${best > 1 ? "s" : ""}. Keep casting votes.`
     : "Every practice checked is a vote for the person you're becoming.";
@@ -475,7 +550,7 @@ function renderTrends() {
   let sumDone = 0, sumTotal = 0;
   days.forEach((d) => { const h = state.history[d]; if (h) { sumDone += h.done; sumTotal += h.total; } });
   const consistency = sumTotal ? Math.round((sumDone / sumTotal) * 100) : 0;
-  const bestStreak = state.practices.reduce((m, p) => Math.max(m, p.streak), 0);
+  const bestStreak = state.practices.reduce((m, p) => Math.max(m, streakUpto(p.id, todayStr())), 0);
   const avgStrength = state.pillars.length
     ? Math.round(state.pillars.reduce((s, p) => s + p.strength, 0) / state.pillars.length) : 0;
 
@@ -556,9 +631,9 @@ el("resetAll").addEventListener("click", () => {
   if (confirm("Reset all pillars, practices, and history? This cannot be undone.")) {
     localStorage.removeItem(KEY);
     state = buildDemo(structuredClone(seedBase));
+    viewDate = todayStr();
     intentionEl.textContent = "";
-    reflectionEl.value = "";
-    renderPractices(); renderPillars();
+    renderPractices(); loadReflection(); renderPillars();
     if (activeView === "trends") renderTrends();
   }
 });
@@ -575,5 +650,6 @@ recordToday();
 recordStrength();
 save();
 renderPractices();
+loadReflection();
 renderPillars();
 syncServer();

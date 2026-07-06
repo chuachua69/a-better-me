@@ -45,7 +45,17 @@
       </div>
 
       <div class="section-head">
-        <h2><span class="ideo">習</span> Today's Practices</h2>
+        <h2><span class="ideo">習</span> Practices</h2>
+        <div class="date-nav">
+          <button class="date-btn" id="prevDay" aria-label="Previous day">‹</button>
+          <span class="date-nav-label" id="dateLabel"></span>
+          <button class="date-btn" id="nextDay" aria-label="Next day">›</button>
+          <button class="btn-ghost date-today" id="jumpToday" hidden>Today</button>
+        </div>
+      </div>
+      <div class="daily-prompt" id="dailyPrompt" hidden>
+        <span class="dp-mark" aria-hidden="true">✦</span>
+        <div><strong>A new day.</strong> Which votes will you cast for the person you're becoming? Check in below.</div>
       </div>
       <div class="panel practices">
         <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
@@ -57,8 +67,8 @@
       <div class="panel reflection">
         <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
         <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-        <h2 class="panel-title"><span class="ideo">思</span> Evening Reflection</h2>
-        <p class="intention-lead">Today, I acted like the person I want to be when I…</p>
+        <h2 class="panel-title"><span class="ideo">思</span> Evening Reflection<span class="reflect-date" id="reflectDate"></span></h2>
+        <p class="intention-lead">I acted like the person I want to be when I…</p>
         <textarea id="reflection" class="reflection-input"
           placeholder="One small moment where you lived your intention."></textarea>
         <div class="reflection-foot">

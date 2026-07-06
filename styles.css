@@ -377,6 +377,36 @@ main,header,footer{position:relative;z-index:1;}
 
 .modal-hint{font-size:.82rem;color:var(--ink-soft);font-style:italic;font-family:var(--serif);margin:-4px 0 16px;}
 
+/* ---------- DATE NAVIGATION ---------- */
+.date-nav{display:flex;align-items:center;gap:8px;}
+.date-btn{
+  width:30px;height:30px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--line-strong);background:var(--cream);color:var(--blue);
+  font-size:18px;line-height:1;display:grid;place-items:center;transition:.16s;
+}
+.date-btn:hover:not(:disabled){background:var(--blue);color:var(--cream);}
+.date-btn:disabled{opacity:.3;cursor:default;}
+.date-nav-label{
+  font-family:var(--serif);font-size:1.05rem;color:var(--blue);font-weight:600;
+  min-width:150px;text-align:center;letter-spacing:.01em;
+}
+.date-today{padding:.35em .8em;font-size:.78rem;}
+
+.daily-prompt{
+  max-width:980px;margin:0 auto 16px;
+  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(120deg,#fff,var(--cream-deep));
+  border:1px solid var(--line-strong);border-left:4px solid var(--crimson);
+  border-radius:8px;padding:14px 18px;box-shadow:var(--shadow);
+  font-family:var(--serif);font-size:1.12rem;color:var(--ink);
+  animation:promptIn .5s ease;
+}
+.daily-prompt strong{color:var(--blue);}
+.dp-mark{color:var(--crimson);font-size:1.5rem;line-height:1;}
+@keyframes promptIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+
+.reflect-date{font-family:var(--serif);font-style:italic;font-size:1rem;color:var(--gold);font-weight:500;}
+
 /* ---------- PRESS FEEDBACK ---------- */
 button{transition:transform .09s ease, background .18s, color .18s, border-color .18s;}
 button:active{transform:scale(.93);}
