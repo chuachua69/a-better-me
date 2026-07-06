@@ -1,3 +1,10 @@
 node_modules/
 .DS_Store
 Thumbs.db
+
+# runtime data — never commit personal state or logs to a public repo
+data.db
+*.db
+tunnel.log
+.venv/
+.env

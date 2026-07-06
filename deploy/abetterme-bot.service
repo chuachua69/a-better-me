@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/root/ABetterMe
+Environment=ABETTERME_DB=/root/abetterme-data.db
 ExecStart=/root/ABetterMe/.venv/bin/python bot.py
 Restart=on-failure
 RestartSec=5

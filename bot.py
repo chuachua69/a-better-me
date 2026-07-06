@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 load_dotenv("../.env")
 TOKEN = os.getenv("ABETTERME_BOT_TOKEN")
-DB_PATH = "data.db"
+DB_PATH = os.getenv("ABETTERME_DB", "data.db")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://chuachua69.github.io/a-better-me/")
 
 # --- Habit Gen ---

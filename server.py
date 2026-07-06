@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = "data.db"
+DB_PATH = os.getenv("ABETTERME_DB", "data.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
