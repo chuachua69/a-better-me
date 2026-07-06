@@ -4,32 +4,57 @@ const DAY = 864e5;
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const dayStr = (offset) => new Date(Date.now() - offset * DAY).toISOString().slice(0, 10);
 
-/* ---------- habit generation from identity ---------- */
+/* ---------- habit generation from identity ----------
+   Order matters: more specific archetypes first. Keywords are matched as
+   substrings, so avoid short strings that collide (e.g. "art" hits "smart"). */
 const HABIT_LIB = [
-  { k: ["athlet", "fit", "strong", "gym", "muscle", "lift"], h: ["Move for 30 minutes", "Stretch for 10 minutes", "Sleep 7+ hours"] },
-  { k: ["run", "marath", "jog"], h: ["Run or brisk-walk 3km", "Stretch after training"] },
-  { k: ["writer", "write", "author"], h: ["Write 300 words", "Read for 20 minutes"] },
-  { k: ["read"], h: ["Read 20 pages", "Screens off 30 min before bed"] },
-  { k: ["scholar", "student", "learn", "study"], h: ["Study for 45 minutes", "Review yesterday's notes"] },
-  { k: ["craft", "maker", "build", "engineer", "develop", "coder", "program"], h: ["One hour of deep work", "Ship one small thing"] },
-  { k: ["creator", "artist", "design", "paint", "music"], h: ["Create for 45 minutes", "Share one piece of work"] },
-  { k: ["founder", "entrepreneur", "hustl", "ceo"], h: ["One revenue-moving task", "Talk to one customer"] },
-  { k: ["leader", "manager", "mentor"], h: ["Plan the day's top 3", "Encourage someone"] },
-  { k: ["parent", "father", "mother", "dad", "mom", "family"], h: ["Phone away at dinner", "15 min undistracted play"] },
-  { k: ["present", "mindful", "calm", "zen", "peace"], h: ["Meditate for 10 minutes", "Journal one honest line"] },
-  { k: ["health", "well", "vital"], h: ["Drink 2L of water", "Eat one whole-food meal"] },
-  { k: ["cook", "chef", "kitchen"], h: ["Cook one real meal", "Prep tomorrow's food"] },
-  { k: ["save", "invest", "wealth", "money", "frugal"], h: ["Log today's spending", "No impulse purchases"] },
-  { k: ["early", "morning", "disciplin"], h: ["Wake at set time — no snooze", "Plan the day before it starts"] },
+  { k: ["runner", "running", "marath", "jog", "sprint"], h: ["Run or brisk-walk for 25 minutes", "Do a 5-minute mobility warm-up", "Log the distance and how it felt"] },
+  { k: ["athlet", "fitness", "gym", "muscle", "lifter", "lifting", "bodybuild", "strength train"], h: ["Train for 30 minutes", "Hit today's protein target", "Sleep 7+ hours"] },
+  { k: ["yoga", "flexib", "mobility"], h: ["Flow through 15 minutes of yoga", "Hold three deep stretches", "Breathe slowly for 5 minutes"] },
+  { k: ["writer", "writing", "author", "novelist", "blogger", "poet"], h: ["Write 300 words — no editing", "Read for 20 minutes", "Capture one idea in a notebook"] },
+  { k: ["reader", "reading", "bookworm", "well-read"], h: ["Read 20 pages", "Note one takeaway", "Screens off 30 min before bed"] },
+  { k: ["scholar", "student", "learner", "learning", "study", "curious", "polymath"], h: ["Study one topic for 40 minutes", "Review yesterday's notes", "Teach one thing you learned"] },
+  { k: ["coder", "coding", "developer", "engineer", "programmer", "software", "hacker"], h: ["One 60-minute deep-work block", "Ship one small improvement", "Read code better than yours"] },
+  { k: ["craft", "maker", "builder", "artisan", "woodwork"], h: ["One hour of focused making", "Finish one small piece", "Sharpen or tidy your tools"] },
+  { k: ["artist", "painter", "painting", "drawing", "sketch", "illustrat", "designer", "creative"], h: ["Create for 45 minutes", "Share one piece of work", "Collect three references"] },
+  { k: ["musician", "music", "guitar", "piano", "singer", "singing", "producer"], h: ["Practice for 30 minutes", "Learn one new phrase", "Play something purely for joy"] },
+  { k: ["photograph", "filmmak", "videograph"], h: ["Make one deliberate frame", "Study one artist's work", "Edit one shot to finish"] },
+  { k: ["founder", "entrepreneur", "startup", "hustler", "ceo", "indie"], h: ["Do one revenue-moving task", "Talk to one customer", "Ship something publicly"] },
+  { k: ["invest", "trader", "wealth", "frugal", "saver", "finance", "budget"], h: ["Log today's spending", "Skip one impulse purchase", "Move a little to savings"] },
+  { k: ["leader", "manager", "mentor", "coach", "captain"], h: ["Set the day's top 3", "Recognize someone's effort", "Have one real 1:1 conversation"] },
+  { k: ["speaker", "orator", "persuad", "communicat", "storytell"], h: ["Rehearse aloud for 10 minutes", "Record and review yourself", "Learn one rhetorical device"] },
+  { k: ["teacher", "educator", "tutor", "professor"], h: ["Explain one concept simply", "Prepare one clear example", "Ask a better question"] },
+  { k: ["parent", "father", "mother", "dad", "mom", "family man", "family woman"], h: ["Phone away at dinner", "15 minutes of undistracted play", "Read or talk at bedtime"] },
+  { k: ["partner", "spouse", "husband", "wife", "boyfriend", "girlfriend", "lover", "marriage"], h: ["Do one small kind gesture", "Ask about their day and listen", "Give 20 undivided minutes"] },
+  { k: ["friend", "connector", "social"], h: ["Reach out to one person", "Listen without fixing", "Plan time with someone you miss"] },
+  { k: ["mindful", "meditat", "present", "calm", "zen", "peace", "stillness"], h: ["Meditate for 10 minutes", "Take three deep breaths before reacting", "Single-task for one hour"] },
+  { k: ["grateful", "gratitude", "optimist", "positive", "joyful"], h: ["Write down three gratitudes", "Thank someone sincerely", "Reframe one worry"] },
+  { k: ["healthy", "wellness", "nutrition", "vitality", "clean eat"], h: ["Drink 2L of water", "Eat one whole-food meal", "Get 20 minutes of daylight"] },
+  { k: ["cook", "chef", "kitchen", "baker", "baking"], h: ["Cook one real meal", "Prep tomorrow's food", "Try one new ingredient"] },
+  { k: ["earlyrise", "early riser", "morning person", "disciplin", "consistent"], h: ["Wake at a set time — no snooze", "Plan the day before it starts", "Do the hard task first"] },
+  { k: ["minimal", "declutter", "simplic", "tidy", "organiz"], h: ["Clear one surface", "Remove one thing you don't use", "One-in, one-out today"] },
+  { k: ["stoic", "resilient", "grit", "disciplined", "warrior"], h: ["Do one hard thing on purpose", "Journal: what's in my control?", "Take a cold shower or hard walk"] },
+  { k: ["spiritual", "faith", "prayer", "praying", "soul", "believer"], h: ["Sit in prayer or reflection 10 min", "Read something wise", "Act from your values once, visibly"] },
+  { k: ["adventur", "explorer", "traveler", "outdoors", "hiker", "nature"], h: ["Spend 20 minutes outside", "Plan one micro-adventure", "Notice something new on a familiar route"] },
+  { k: ["gardener", "gardening", "plant", "grower", "farmer"], h: ["Tend the garden for 15 minutes", "Water and observe closely", "Learn one plant or technique"] },
+  { k: ["giver", "generous", "volunteer", "service", "charit", "kind"], h: ["Do one act of service", "Give without expecting return", "Check on someone quietly struggling"] },
+  { k: ["sober", "recovery", "clean living"], h: ["Reach out to your support", "Replace the urge with a walk", "Note one reason you're proud"] },
+  { k: ["sleep", "rested", "recover"], h: ["Set a fixed bedtime", "Screens off 30 min before bed", "Do a short wind-down ritual"] },
+  { k: ["focused", "productiv", "deep work", "maker of things"], h: ["Protect one 90-minute focus block", "Choose today's single most important task", "Take a real break away from screens"] },
 ];
+
 function genHabits(identity) {
   const s = (identity || "").toLowerCase();
   const out = [];
   for (const e of HABIT_LIB) if (e.k.some((k) => s.includes(k))) out.push(...e.h);
-  const uniq = [...new Set(out)].slice(0, 3);
-  if (uniq.length) return uniq;
-  const noun = identity.replace(/^the\s+/i, "").trim() || "this identity";
-  return [`Act like ${identity} today`, `One deliberate ${noun.toLowerCase()} habit`];
+  const uniq = [...new Set(out)];
+  if (uniq.length) return uniq.slice(0, 3);
+  // graceful, still identity-anchored fallback for identities we don't recognise
+  return [
+    `Spend 20 minutes on what ${identity} cares about`,
+    `Do one thing today only ${identity} would do`,
+    `Reflect tonight: when did I act like ${identity}?`,
+  ];
 }
 
 /* ---------- seed ---------- */
@@ -41,10 +66,12 @@ const seedBase = {
     { id: 3, identity: "The Present One", creed: "Attention is the truest form of love.", strength: 30 },
   ],
   practices: [
-    { id: 1, pillarId: 1, name: "Move for 30 minutes", streak: 0, doneOn: "" },
-    { id: 2, pillarId: 1, name: "Stretch for 10 minutes", streak: 0, doneOn: "" },
-    { id: 3, pillarId: 2, name: "One hour of deep work", streak: 0, doneOn: "" },
-    { id: 4, pillarId: 3, name: "Phone away at dinner", streak: 0, doneOn: "" },
+    { id: 1, pillarId: 1, name: "Train for 30 minutes", streak: 0, doneOn: "" },
+    { id: 2, pillarId: 1, name: "Sleep 7+ hours", streak: 0, doneOn: "" },
+    { id: 3, pillarId: 2, name: "One hour of focused making", streak: 0, doneOn: "" },
+    { id: 4, pillarId: 2, name: "Finish one small piece", streak: 0, doneOn: "" },
+    { id: 5, pillarId: 3, name: "Phone away at dinner", streak: 0, doneOn: "" },
+    { id: 6, pillarId: 3, name: "Three deep breaths before reacting", streak: 0, doneOn: "" },
   ],
   reflection: { date: "", text: "" },
   history: {},          // { 'YYYY-MM-DD': { done, total } }
@@ -66,9 +93,9 @@ function buildDemo(base) {
   return base;
 }
 
-let state = load();
+let state = loadLocal();
 
-function load() {
+function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return buildDemo(structuredClone(seedBase));
@@ -77,11 +104,101 @@ function load() {
     return buildDemo(structuredClone(seedBase));
   }
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(state));
+  fetch("/api/state", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(state)
+  }).catch(err => console.error("Sync failed:", err));
+}
+
+async function syncServer() {
+  try {
+    const res = await fetch("/api/state");
+    if (res.ok) {
+      const data = await res.json();
+      if (Object.keys(data).length > 0) {
+        state = { ...structuredClone(seedBase), ...data };
+        localStorage.setItem(KEY, JSON.stringify(state));
+        renderPractices();
+        renderPillars();
+        if (activeView === "trends") renderTrends();
+        el("intentionText").textContent = state.intention || "";
+      } else {
+        // First run on server, push local state
+        save();
+      }
+    }
+  } catch (err) {
+    console.error("Fetch state failed:", err);
+  }
+}
 const uid = () => Date.now() + Math.floor(Math.random() * 1000);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pillarName = (id) => (state.pillars.find((p) => p.id === id) || {}).identity || "";
+
+/* ============ SOUND (synth porcelain chimes — no audio files) ============ */
+const sfx = (() => {
+  let ctx = null;
+  let muted = localStorage.getItem("aBetterMe.muted") === "1";
+  function ac() {
+    if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctx = new AC(); }
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+  function note(freq, { t = 0, dur = 0.3, type = "sine", vol = 0.18, glideTo = null } = {}) {
+    const c = ac(); if (!c) return;
+    const now = c.currentTime + t;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, now + dur);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(vol, now + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(now); osc.stop(now + dur + 0.03);
+  }
+  const api = {
+    get muted() { return muted; },
+    toggle() { muted = !muted; localStorage.setItem("aBetterMe.muted", muted ? "1" : "0"); if (!muted) api.tap(); return muted; },
+    check() { if (muted) return; note(659.3, { dur: 0.18, vol: 0.16 }); note(987.8, { t: 0.05, dur: 0.4, vol: 0.18 }); note(1318.5, { t: 0.05, dur: 0.4, vol: 0.05 }); },
+    uncheck() { if (muted) return; note(440, { dur: 0.22, vol: 0.12, glideTo: 311 }); },
+    vote() { if (muted) return; note(880, { dur: 0.1, type: "triangle", vol: 0.12 }); note(1174.7, { t: 0.04, dur: 0.16, vol: 0.09 }); },
+    tap() { if (muted) return; note(523, { dur: 0.05, type: "triangle", vol: 0.07 }); },
+    add() { if (muted) return; [783.99, 987.77, 1318.5].forEach((f, i) => note(f, { t: i * 0.05, dur: 0.26, vol: 0.11 })); },
+    seal() { if (muted) return; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, { t: i * 0.09, dur: 0.5, vol: 0.13 })); },
+  };
+  return api;
+})();
+
+/* ---------- visual press effects ---------- */
+function ripple(x, y, color) {
+  const r = document.createElement("span");
+  r.className = "fx-ripple";
+  r.style.left = x + "px"; r.style.top = y + "px";
+  if (color) r.style.setProperty("--fx", color);
+  document.body.appendChild(r);
+  setTimeout(() => r.remove(), 620);
+}
+function bloomRing(x, y) {
+  const r = document.createElement("span");
+  r.className = "fx-bloom";
+  r.style.left = x + "px"; r.style.top = y + "px";
+  document.body.appendChild(r);
+  setTimeout(() => r.remove(), 640);
+}
+/* ripple on every interactive press; richer sounds are fired by their own handlers */
+document.addEventListener("pointerdown", (e) => {
+  const t = e.target.closest("button, .check, .tab");
+  if (!t) return;
+  const danger = t.classList.contains("rm") || t.dataset.pact === "del";
+  ripple(e.clientX, e.clientY, danger ? "rgba(181,18,27,.5)" : "rgba(29,53,87,.42)");
+  const ownSound = t.classList.contains("check") || t.dataset.pact === "cast" || t.dataset.pact === "gen" || t.id === "saveReflection";
+  if (!ownSound) sfx.tap();
+});
 
 /* ---------- recording ---------- */
 function recordToday() {
@@ -199,6 +316,7 @@ pillarsEl.addEventListener("click", (e) => {
   switch (btn.dataset.pact) {
     case "cast":
       p.strength = Math.min(100, p.strength + 5);
+      sfx.vote();
       recordStrength(); save(); renderPillars();
       break;
     case "edit":
@@ -224,6 +342,7 @@ pillarsEl.addEventListener("click", (e) => {
       const fresh = genHabits(p.identity).filter((n) => !existing.has(n.toLowerCase()));
       if (!fresh.length) { alert("Those practices are already here. Edit or add your own to go deeper."); break; }
       fresh.forEach((n) => state.practices.push({ id: uid(), pillarId: id, name: n, streak: 0, doneOn: "" }));
+      sfx.add();
       recordToday(); save(); renderPillars();
       break;
     }
@@ -297,7 +416,15 @@ function renderPractices() {
 
 practicesEl.addEventListener("click", (e) => {
   const chk = e.target.closest(".check");
-  if (chk) toggle(+chk.dataset.id);
+  if (!chk) return;
+  const id = +chk.dataset.id;
+  const pr = state.practices.find((p) => p.id === id);
+  const willComplete = pr && pr.doneOn !== todayStr();
+  const rect = chk.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+  toggle(id);
+  if (willComplete) { sfx.check(); bloomRing(cx, cy); }
+  else { sfx.uncheck(); }
 });
 practicesEl.addEventListener("keydown", (e) => {
   const chk = e.target.closest(".check");
@@ -326,6 +453,7 @@ if (state.reflection.date === todayStr()) reflectionEl.value = state.reflection.
 el("saveReflection").addEventListener("click", () => {
   state.reflection = { date: todayStr(), text: reflectionEl.value.trim() };
   save();
+  sfx.seal();
   savedFlag.textContent = "Sealed ✦";
   savedFlag.classList.add("show");
   setTimeout(() => savedFlag.classList.remove("show"), 2200);
@@ -435,6 +563,12 @@ el("resetAll").addEventListener("click", () => {
   }
 });
 
+/* ---------- sound toggle ---------- */
+const muteBtn = el("muteBtn");
+function paintMute() { muteBtn.textContent = sfx.muted ? "🔕" : "🔔"; muteBtn.classList.toggle("muted", sfx.muted); }
+muteBtn.addEventListener("click", () => { sfx.toggle(); paintMute(); });
+paintMute();
+
 /* ---------- init ---------- */
 state.lastVisit = todayStr();
 recordToday();
@@ -442,3 +576,4 @@ recordStrength();
 save();
 renderPractices();
 renderPillars();
+syncServer();
