@@ -235,6 +235,31 @@ main,header,footer{position:relative;z-index:1;}
   margin:.3em 0 1em;white-space:pre-wrap;
 }
 .reflection-preview.empty{font-style:italic;color:var(--ink-soft);opacity:.75;}
+.reflection-preview .muted{color:var(--ink-soft);opacity:.6;}
+
+/* reflection rating buttons */
+.reflect-rating{margin:2px 0 18px;}
+.rating-q{font-family:var(--serif);font-size:1.05rem;color:var(--ink);margin:0 0 8px;}
+.rating-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.rate-btn{
+  font-family:var(--sans);font-size:.82rem;font-weight:600;cursor:pointer;
+  padding:.7em .4em;border-radius:7px;border:1px solid var(--line-strong);
+  background:var(--cream);color:var(--blue);transition:.15s;
+}
+.rate-btn:hover{background:#eef2f7;}
+.rate-btn.sel{background:var(--blue);color:var(--cream);border-color:var(--blue);box-shadow:0 4px 12px -5px var(--blue);}
+.rate-btn[data-score="4"].sel{background:var(--gold);color:#2a2410;border-color:var(--gold);box-shadow:0 4px 12px -5px var(--gold);}
+
+/* alignment score badge */
+.score-badge{
+  display:inline-block;font-family:var(--sans);font-size:.66rem;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:20px;
+  color:#fff;vertical-align:middle;
+}
+.score-badge.s1{background:#b0605e;}
+.score-badge.s2{background:#c99a4e;}
+.score-badge.s3{background:#6f8fb0;}
+.score-badge.s4{background:var(--gold);color:#2a2410;}
 
 /* Trends reflection log */
 .reflection-log{display:flex;flex-direction:column;gap:10px;}

@@ -91,6 +91,9 @@ const seedBase = {
   lastVisit: "",
 };
 
+/* reflection alignment scale (the lightweight metric kept long-term) */
+const SCORE_LABELS = { 1: "Drifted", 2: "Some", 3: "Mostly", 4: "Fully" };
+
 /* fold legacy / bot-written fields into the canonical model on every load */
 function migrate(s) {
   if (!s.dayLog) s.dayLog = {};
@@ -101,10 +104,29 @@ function migrate(s) {
       if (!arr.includes(p.id)) arr.push(p.id);
     }
   });
+  // normalise reflections to { s: score|null, t: text }
+  for (const d in s.reflections) {
+    const v = s.reflections[d];
+    if (typeof v === "string") s.reflections[d] = { s: null, t: v };
+    else if (v && typeof v === "object") { if (!("s" in v)) v.s = null; if (!("t" in v)) v.t = ""; }
+    else delete s.reflections[d];
+  }
   if (s.reflection && s.reflection.date && s.reflections[s.reflection.date] == null) {
-    s.reflections[s.reflection.date] = s.reflection.text || "";
+    s.reflections[s.reflection.date] = { s: null, t: s.reflection.text || "" };
   }
   return s;
+}
+
+/* keep full reflection TEXT for 7 days; older days keep only the alignment score */
+function consolidateReflections() {
+  const keepFrom = dayStr(6); // today + 6 prior days keep their text
+  for (const d in state.reflections) {
+    if (d < keepFrom) {
+      const e = state.reflections[d];
+      if (e && e.t) delete e.t;                 // drop bulky text, keep the score
+      if (e && e.s == null && !e.t) delete state.reflections[d];
+    }
+  }
 }
 
 let state = loadLocal();
@@ -555,20 +577,45 @@ function toggle(id) {
 /* ---------- reflection (per day, modal) ---------- */
 const reflectionEl = el("reflection");
 const reflectVeil = el("reflectVeil");
+const ratingBtns = document.querySelectorAll("#reflectRating .rate-btn");
+let reflectScore = null;
+
+function paintRating() {
+  ratingBtns.forEach((b) => b.classList.toggle("sel", +b.dataset.score === reflectScore));
+}
+el("reflectRating").addEventListener("click", (e) => {
+  const b = e.target.closest(".rate-btn");
+  if (!b) return;
+  const v = +b.dataset.score;
+  reflectScore = reflectScore === v ? null : v; // tap again to clear
+  paintRating();
+  sfx.tap();
+});
 
 function loadReflection() {
-  const txt = state.reflections[viewDate] || "";
+  const e = state.reflections[viewDate];
   el("reflectDate").textContent = isToday(viewDate) ? "" : ` · ${niceDate(viewDate)}`;
   const prev = el("reflectionPreview");
-  prev.textContent = txt || "No reflection yet for this day.";
-  prev.classList.toggle("empty", !txt);
-  el("openReflection").textContent = txt ? "✎ Edit reflection" : "✎ Write reflection";
+  const hasScore = e && e.s;
+  const hasText = e && e.t && e.t.trim();
+  if (hasScore || hasText) {
+    prev.innerHTML =
+      (hasScore ? `<span class="score-badge s${e.s}">${SCORE_LABELS[e.s]}</span> ` : "") +
+      (hasText ? esc(e.t) : "<span class='muted'>—</span>");
+    prev.classList.remove("empty");
+  } else {
+    prev.textContent = "No reflection yet for this day.";
+    prev.classList.add("empty");
+  }
+  el("openReflection").textContent = (hasScore || hasText) ? "✎ Edit reflection" : "✎ Write reflection";
 }
 el("openReflection").addEventListener("click", () => {
   el("reflectTitle").textContent = isToday(viewDate) ? "Evening Reflection" : `Reflection · ${niceDate(viewDate)}`;
-  reflectionEl.value = state.reflections[viewDate] || "";
+  const e = state.reflections[viewDate];
+  reflectScore = (e && e.s) || null;
+  reflectionEl.value = (e && e.t) || "";
+  paintRating();
   reflectVeil.hidden = false;
-  reflectionEl.focus();
 });
 function closeReflect() { reflectVeil.hidden = true; }
 el("reflectCancel").addEventListener("click", closeReflect);
@@ -576,7 +623,8 @@ reflectVeil.addEventListener("click", (e) => { if (e.target === reflectVeil) clo
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !reflectVeil.hidden) closeReflect(); });
 el("saveReflection").addEventListener("click", () => {
   const txt = reflectionEl.value.trim();
-  if (txt) state.reflections[viewDate] = txt; else delete state.reflections[viewDate];
+  if (reflectScore == null && !txt) delete state.reflections[viewDate];
+  else state.reflections[viewDate] = { s: reflectScore, t: txt };
   state.reflection = { date: viewDate, text: txt }; // legacy mirror
   save();
   sfx.seal();
@@ -638,22 +686,62 @@ function renderTrends() {
       </div>`).join("")
     : `<p class="chart-empty">Add an identity pillar to see its strength.</p>`;
 
+  // alignment (last 30 days) from reflection scores — the consolidated long-term metric
+  const aDays = lastDays(30);
+  const scored = aDays.filter((d) => state.reflections[d] && state.reflections[d].s);
+  if (scored.length) {
+    el("chartAlignment").innerHTML = alignmentChartSVG(aDays);
+    const avg = scored.reduce((s, d) => s + state.reflections[d].s, 0) / scored.length;
+    el("noteAlignment").textContent = `Average alignment ${avg.toFixed(1)}/4 across ${scored.length} reflection${scored.length > 1 ? "s" : ""}.`;
+  } else {
+    el("chartAlignment").innerHTML = `<p class="chart-empty">Rate how aligned you felt when you reflect — your trend builds here.</p>`;
+    el("noteAlignment").textContent = "";
+  }
+
   renderReflectionLog();
 }
 
 function renderReflectionLog() {
   const entries = Object.entries(state.reflections)
-    .filter(([, txt]) => (txt || "").trim())
+    .filter(([, e]) => e && e.t && e.t.trim())
     .sort((a, b) => b[0].localeCompare(a[0]));
   const box = el("reflectionLog");
   if (!box) return;
   box.innerHTML = entries.length
-    ? entries.map(([d, txt]) => `
+    ? entries.map(([d, e]) => `
       <button class="reflect-entry" data-refdate="${d}">
-        <span class="re-date">${niceDate(d)}${d === todayStr() ? " · today" : ""}</span>
-        <span class="re-text">${esc(txt)}</span>
+        <span class="re-date">${niceDate(d)}${d === todayStr() ? " · today" : ""}${e.s ? ` &middot; <span class="score-badge s${e.s}">${SCORE_LABELS[e.s]}</span>` : ""}</span>
+        <span class="re-text">${esc(e.t)}</span>
       </button>`).join("")
-    : `<p class="chart-empty">No reflections yet. Seal one on the Today tab.</p>`;
+    : `<p class="chart-empty">Only the last 7 days keep their words — older reflections live on as the alignment trend above.</p>`;
+}
+
+function alignmentChartSVG(days) {
+  const W = 320, H = 120, padX = 6, padTop = 10, padBot = 18;
+  const baseY = H - padBot;
+  const slot = (W - padX * 2) / days.length;
+  const bw = slot * 0.62;
+  const colors = { 1: "#b0605e", 2: "#c99a4e", 3: "#6f8fb0", 4: "var(--gold)" };
+  let bars = "", labels = "";
+  days.forEach((d, i) => {
+    const e = state.reflections[d];
+    const sc = e && e.s;
+    if (sc) {
+      const h = (sc / 4) * (baseY - padTop);
+      const x = padX + i * slot + (slot - bw) / 2;
+      bars += `<rect x="${x.toFixed(1)}" y="${(baseY - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="${colors[sc]}"><title>${d}: ${SCORE_LABELS[sc]}</title></rect>`;
+    }
+    if (i === 0 || i === days.length - 1 || i === 15) {
+      const lbl = i === days.length - 1 ? "today" : d.slice(5);
+      labels += `<text class="bar-label" x="${(padX + i * slot + slot / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle">${lbl}</text>`;
+    }
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Alignment over 30 days">
+    <line class="grid-line" x1="${padX}" y1="${padTop}" x2="${W - padX}" y2="${padTop}"/>
+    <text class="grid-cap" x="${W - padX}" y="${padTop - 3}" text-anchor="end">Fully</text>
+    <line class="grid-line" x1="${padX}" y1="${baseY}" x2="${W - padX}" y2="${baseY}"/>
+    ${bars}${labels}
+  </svg>`;
 }
 
 function barChartSVG(days) {
@@ -736,6 +824,7 @@ if ("serviceWorker" in navigator) {
 
 /* ---------- init ---------- */
 state.lastVisit = todayStr();
+consolidateReflections();
 recordToday();
 recordStrength();
 save();
