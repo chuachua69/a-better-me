@@ -71,9 +71,9 @@ function genHabits(identity) {
 const seedBase = {
   intention: "",
   pillars: [
-    { id: 1, identity: "The Athlete", creed: "A strong body is a strong mind.", strength: 40 },
-    { id: 2, identity: "The Craftsman", creed: "I do fewer things, better.", strength: 55 },
-    { id: 3, identity: "The Present One", creed: "Attention is the truest form of love.", strength: 30 },
+    { id: 1, identity: "The Athlete", creed: "A strong body is a strong mind.", strength: 10 },
+    { id: 2, identity: "The Craftsman", creed: "I do fewer things, better.", strength: 10 },
+    { id: 3, identity: "The Present One", creed: "Attention is the truest form of love.", strength: 10 },
   ],
   practices: [
     { id: 1, pillarId: 1, name: "Train for 30 minutes", streak: 0, doneOn: "" },
@@ -90,24 +90,6 @@ const seedBase = {
   strengthHistory: {},  // { 'YYYY-MM-DD': avgStrength }
   lastVisit: "",
 };
-
-/* demo history so Trends & past days look alive on first run; real data appends from today */
-function buildDemo(base) {
-  const ids = base.practices.map((p) => p.id);
-  const total = ids.length;
-  const rnd = (n) => Math.floor(Math.random() * n);
-  let strength = 30;
-  for (let i = 13; i >= 1; i--) {
-    const d = dayStr(i);
-    const done = 1 + rnd(total);
-    const picks = [...ids].sort(() => Math.random() - 0.5).slice(0, done);
-    base.dayLog[d] = picks;
-    base.history[d] = { done: picks.length, total };
-    strength = Math.max(18, Math.min(72, strength + (rnd(9) - 3)));
-    base.strengthHistory[d] = Math.round(strength);
-  }
-  return base;
-}
 
 /* fold legacy / bot-written fields into the canonical model on every load */
 function migrate(s) {
@@ -130,10 +112,10 @@ let state = loadLocal();
 function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return buildDemo(structuredClone(seedBase));
+    if (!raw) return structuredClone(seedBase);
     return migrate({ ...structuredClone(seedBase), ...JSON.parse(raw) });
   } catch {
-    return buildDemo(structuredClone(seedBase));
+    return structuredClone(seedBase);
   }
 }
 function save() {
@@ -570,22 +552,48 @@ function toggle(id) {
   recordDay(d); recordStrength(); save(); renderPractices();
 }
 
-/* ---------- reflection (per day) ---------- */
-const reflectionEl = el("reflection"), savedFlag = el("reflectionSaved");
+/* ---------- reflection (per day, modal) ---------- */
+const reflectionEl = el("reflection");
+const reflectVeil = el("reflectVeil");
+
 function loadReflection() {
-  reflectionEl.value = state.reflections[viewDate] || "";
+  const txt = state.reflections[viewDate] || "";
   el("reflectDate").textContent = isToday(viewDate) ? "" : ` · ${niceDate(viewDate)}`;
+  const prev = el("reflectionPreview");
+  prev.textContent = txt || "No reflection yet for this day.";
+  prev.classList.toggle("empty", !txt);
+  el("openReflection").textContent = txt ? "✎ Edit reflection" : "✎ Write reflection";
 }
+el("openReflection").addEventListener("click", () => {
+  el("reflectTitle").textContent = isToday(viewDate) ? "Evening Reflection" : `Reflection · ${niceDate(viewDate)}`;
+  reflectionEl.value = state.reflections[viewDate] || "";
+  reflectVeil.hidden = false;
+  reflectionEl.focus();
+});
+function closeReflect() { reflectVeil.hidden = true; }
+el("reflectCancel").addEventListener("click", closeReflect);
+reflectVeil.addEventListener("click", (e) => { if (e.target === reflectVeil) closeReflect(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !reflectVeil.hidden) closeReflect(); });
 el("saveReflection").addEventListener("click", () => {
   const txt = reflectionEl.value.trim();
   if (txt) state.reflections[viewDate] = txt; else delete state.reflections[viewDate];
   state.reflection = { date: viewDate, text: txt }; // legacy mirror
   save();
   sfx.seal();
-  savedFlag.textContent = "Sealed ✦";
-  savedFlag.classList.add("show");
+  closeReflect();
+  loadReflection();
   renderDateNav();
-  setTimeout(() => savedFlag.classList.remove("show"), 2200);
+});
+
+/* Trends → tap a reflection to revisit that day */
+el("reflectionLog").addEventListener("click", (e) => {
+  const b = e.target.closest(".reflect-entry");
+  if (!b) return;
+  sfx.tap();
+  viewDate = b.dataset.refdate;
+  switchView("today");
+  renderPractices();
+  loadReflection();
 });
 
 /* ---------- streak line ---------- */
@@ -613,9 +621,15 @@ function renderTrends() {
     <div class="stat"><div class="stat-num">${bestStreak}</div><div class="stat-label">Best streak · days</div></div>
     <div class="stat"><div class="stat-num">${avgStrength}<span class="unit">%</span></div><div class="stat-label">Avg strength</div></div>`;
 
-  el("chartPractices").innerHTML = barChartSVG(days);
-  el("notePractices").textContent = `${sumDone} practices lived across the last 14 days.`;
-  el("chartStrength").innerHTML = lineChartSVG(days);
+  const emptyMsg = `<p class="chart-empty">No data yet — check in your practices and this fills up over the coming days.</p>`;
+  if (sumDone === 0) { el("chartPractices").innerHTML = emptyMsg; el("notePractices").textContent = ""; }
+  else { el("chartPractices").innerHTML = barChartSVG(days); el("notePractices").textContent = `${sumDone} practices lived across the last 14 days.`; }
+
+  const strengthDays = days.filter((d) => state.strengthHistory[d] != null).length;
+  el("chartStrength").innerHTML = strengthDays >= 2
+    ? lineChartSVG(days)
+    : `<p class="chart-empty">Cast votes and keep checking in — your identity-strength trend appears once there are a few days of data.</p>`;
+
   el("barsByPillar").innerHTML = state.pillars.length
     ? state.pillars.map((p) => `
       <div class="pbar-row">
@@ -623,6 +637,23 @@ function renderTrends() {
         <div class="pbar-track"><div class="pbar-fill" style="width:${p.strength}%"></div></div>
       </div>`).join("")
     : `<p class="chart-empty">Add an identity pillar to see its strength.</p>`;
+
+  renderReflectionLog();
+}
+
+function renderReflectionLog() {
+  const entries = Object.entries(state.reflections)
+    .filter(([, txt]) => (txt || "").trim())
+    .sort((a, b) => b[0].localeCompare(a[0]));
+  const box = el("reflectionLog");
+  if (!box) return;
+  box.innerHTML = entries.length
+    ? entries.map(([d, txt]) => `
+      <button class="reflect-entry" data-refdate="${d}">
+        <span class="re-date">${niceDate(d)}${d === todayStr() ? " · today" : ""}</span>
+        <span class="re-text">${esc(txt)}</span>
+      </button>`).join("")
+    : `<p class="chart-empty">No reflections yet. Seal one on the Today tab.</p>`;
 }
 
 function barChartSVG(days) {
@@ -684,7 +715,7 @@ function lineChartSVG(days) {
 el("resetAll").addEventListener("click", () => {
   if (confirm("Reset all pillars, practices, and history? This cannot be undone.")) {
     localStorage.removeItem(KEY);
-    state = buildDemo(structuredClone(seedBase));
+    state = structuredClone(seedBase);
     viewDate = todayStr();
     intentionEl.textContent = "";
     renderPractices(); loadReflection(); renderPillars();
@@ -697,6 +728,11 @@ const muteBtn = el("muteBtn");
 function paintMute() { muteBtn.textContent = sfx.muted ? "🔕" : "🔔"; muteBtn.classList.toggle("muted", sfx.muted); }
 muteBtn.addEventListener("click", () => { sfx.toggle(); paintMute(); });
 paintMute();
+
+/* ---------- PWA service worker ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
 
 /* ---------- init ---------- */
 state.lastVisit = todayStr();

@@ -5,10 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>A Better Me · Identity Architecture</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23FDFBF7'/%3E%3Ccircle cx='16' cy='16' r='12' fill='%23B5121B'/%3E%3Ccircle cx='16' cy='16' r='9.5' fill='none' stroke='%23FDFBF7' stroke-width='1' stroke-dasharray='2 2'/%3E%3Ctext x='16' y='21.5' text-anchor='middle' font-family='Georgia,serif' font-size='14' fill='%23FDFBF7'%3E%E5%B7%B1%3C/text%3E%3C/svg%3E" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#1D3557" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="A Better Me" />
+<link rel="apple-touch-icon" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <div class="porcelain-frame" aria-hidden="true"></div>
@@ -68,13 +75,8 @@
         <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
         <div class="panel-corner bl"></div><div class="panel-corner br"></div>
         <h2 class="panel-title"><span class="ideo">思</span> Evening Reflection<span class="reflect-date" id="reflectDate"></span></h2>
-        <p class="intention-lead">I acted like the person I want to be when I…</p>
-        <textarea id="reflection" class="reflection-input"
-          placeholder="One small moment where you lived your intention."></textarea>
-        <div class="reflection-foot">
-          <span id="reflectionSaved" class="saved-flag"></span>
-          <button class="btn-solid" id="saveReflection">Seal the day</button>
-        </div>
+        <p class="reflection-preview" id="reflectionPreview"></p>
+        <button class="btn-solid" id="openReflection">✎ Write reflection</button>
       </div>
     </section>
 
@@ -84,7 +86,7 @@
         <h2><span class="ideo">柱</span> Identity Pillars</h2>
         <button class="btn-ghost" id="addPillar">＋ New Pillar</button>
       </div>
-      <p class="lead-note">Name an identity and its daily practices are <em>generated for you</em> — then edit them to fit your life. Each check-in is a vote for that self.</p>
+      <p class="lead-note">Set up each identity and the practices that define it <em>here</em> — they appear on <em>Today</em> for your daily check-in. Each check is a vote for that self.</p>
       <div class="pillars" id="pillars"></div>
     </section>
 
@@ -115,6 +117,13 @@
         <div class="panel-corner bl"></div><div class="panel-corner br"></div>
         <h3 class="chart-title">Strength by pillar</h3>
         <div class="bars-by-pillar" id="barsByPillar"></div>
+      </div>
+
+      <div class="panel chart-card">
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <h3 class="chart-title"><span class="ideo">思</span> Reflections</h3>
+        <div class="reflection-log" id="reflectionLog"></div>
       </div>
     </section>
   </main>
@@ -164,6 +173,22 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- reflection modal -->
+  <div class="modal-veil" id="reflectVeil" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div><div class="panel-corner br"></div>
+      <h3 id="reflectTitle">Evening Reflection</h3>
+      <p class="modal-hint">I acted like the person I want to be when I…</p>
+      <textarea id="reflection" class="reflection-input"
+        placeholder="One small moment where you lived your intention."></textarea>
+      <div class="modal-actions">
+        <button class="btn-text" id="reflectCancel">Cancel</button>
+        <button class="btn-solid" id="saveReflection">Seal ✦</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=3"></script>
 </body>
 </html>

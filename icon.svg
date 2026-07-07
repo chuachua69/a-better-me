@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1D3557"/>
+  <circle cx="256" cy="256" r="150" fill="#B5121B"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#FDFBF7" stroke-width="6" stroke-dasharray="10 12"/>
+  <text x="256" y="322" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="185" fill="#FDFBF7">己</text>
+</svg>

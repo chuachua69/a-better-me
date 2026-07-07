@@ -1,0 +1,15 @@
+{
+  "name": "A Better Me",
+  "short_name": "A Better Me",
+  "description": "Identity architecture — design the person you are becoming, one deliberate practice at a time.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDFBF7",
+  "theme_color": "#1D3557",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
